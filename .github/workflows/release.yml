@@ -1,0 +1,76 @@
+# Сборка установщиков: Windows (.exe, Inno Setup) и macOS (.dmg для Apple Silicon и Intel).
+# - на каждый PR — просто проверка, что всё собирается (файлы лежат в Artifacts запуска);
+# - на тег вида v1.0.0 — ещё и GitHub Release с установщиками;
+# - вручную: Actions → Build installers → Run workflow.
+name: Build installers
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: ["src/**", "tests/**", "build/**", ".github/workflows/release.yml", "*.sln"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Version
+        shell: pwsh
+        run: |
+          $v = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.0.0-dev" }
+          "CLIPPER_VERSION=$v" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: Tests
+        run: dotnet test -c Release
+      - name: Publish
+        run: dotnet publish src/Clipper.Desktop -c Release -r win-x64 --self-contained -p:Version=${{ env.CLIPPER_VERSION }} -o publish/win-x64
+      - name: Installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc build\windows\clipper.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/windows/Output/*.exe
+
+  macos:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        rid: [osx-arm64, osx-x64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build .app and .dmg
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then v="${GITHUB_REF_NAME#v}"; else v="0.0.0-dev"; fi
+          ./build/macos/make-app.sh "${{ matrix.rid }}" "$v"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.rid }}
+          path: dist/*.dmg
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*
+          generate_release_notes: true

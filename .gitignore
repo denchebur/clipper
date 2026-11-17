@@ -17,3 +17,6 @@ clips/
 *.mp4.part
 
 .DS_Store
+publish/
+dist/
+build/windows/Output/
