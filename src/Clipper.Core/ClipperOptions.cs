@@ -41,6 +41,35 @@ public sealed class ClipperOptions
     public double RecorderRestartDelaySeconds { get; set; } = 15;
 
     public VerticalVideoOptions Vertical { get; set; } = new();
+
+    public SubtitleOptions Subtitles { get; set; } = new();
+}
+
+/// <summary>Субтитры: речь распознаётся локально моделью Whisper.</summary>
+public sealed class SubtitleOptions
+{
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>Вшивать субтитры в видео. Файл .srt рядом с клипом сохраняется в любом случае.</summary>
+    public bool BurnIn { get; set; } = true;
+
+    /// <summary>
+    /// Модель Whisper: tiny, base, small, medium, largev3turbo.
+    /// Чем больше, тем точнее, но медленнее. Скачивается автоматически при первом клипе.
+    /// </summary>
+    public string Model { get; set; } = "base";
+
+    /// <summary>Язык речи: "auto" (определить сам) или код: ru, en, uk, de...</summary>
+    public string Language { get; set; } = "auto";
+
+    /// <summary>Папка для скачанных моделей.</summary>
+    public string ModelsDir { get; set; } = "models";
+
+    /// <summary>Максимум символов в одной строке субтитров.</summary>
+    public int MaxLineChars { get; set; } = 32;
+
+    /// <summary>Размер шрифта (в единицах libass, для 1080×1920 значение 14 ≈ 90 px).</summary>
+    public int FontSize { get; set; } = 14;
 }
 
 public sealed class VerticalVideoOptions

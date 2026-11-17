@@ -4,6 +4,7 @@ using Clipper.Core;
 using Clipper.Core.Abstractions;
 using Clipper.Core.Models;
 using Clipper.Core.Planning;
+using Clipper.Core.Subtitles;
 
 namespace Clipper.Server;
 
@@ -16,6 +17,7 @@ public sealed class ClipWorker(
     ClipPlanner planner,
     IStreamRecorder recorder,
     IClipCutter cutter,
+    ITranscriber transcriber,
     ILogger<ClipWorker> logger) : BackgroundService
 {
     /// <summary>Запас на то, что streamlink пишет на диск с небольшой задержкой.</summary>
@@ -54,7 +56,19 @@ public sealed class ClipWorker(
             var output = Path.GetFullPath(Path.Combine(options.ClipsDir,
                 $"clip_{start.ToLocalTime():yyyy-MM-dd_HH-mm-ss}_{platform}.mp4"));
 
-            await cutter.CutAsync(session.FilePath, start - session.StartedAt, duration, output, ct);
+            var offset = start - session.StartedAt;
+
+            string? srtPath = null;
+            if (options.Subtitles.Enabled)
+            {
+                job.Status = ClipJobStatus.Transcribing;
+                srtPath = await CreateSubtitlesAsync(session.FilePath, offset, duration, output, ct);
+                job.SubtitlesPath = srtPath;
+            }
+
+            job.Status = ClipJobStatus.Cutting;
+            await cutter.CutAsync(session.FilePath, offset, duration, output, ct,
+                options.Subtitles.BurnIn ? srtPath : null);
 
             job.OutputPath = output;
             job.Status = ClipJobStatus.Done;
@@ -69,6 +83,49 @@ public sealed class ClipWorker(
             job.Status = ClipJobStatus.Failed;
             job.Error = ex.Message;
             logger.LogError("Не удалось вырезать клип {Id}: {Error}", job.Id, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Распознаёт речь клипа и сохраняет субтитры рядом с ним: clip_….ru.srt.
+    /// Возвращает путь к .srt или null, если речи нет или распознать не вышло
+    /// (тогда клип всё равно режется, просто без субтитров).
+    /// </summary>
+    private async Task<string?> CreateSubtitlesAsync(string source, TimeSpan offset, TimeSpan duration,
+        string clipPath, CancellationToken ct)
+    {
+        var wavPath = Path.ChangeExtension(clipPath, ".wav");
+        try
+        {
+            await cutter.ExtractAudioAsync(source, offset, duration, wavPath, ct);
+            var transcript = await transcriber.TranscribeAsync(wavPath, ct);
+
+            var lines = SubtitleFormatter.SplitForShorts(transcript.Segments, options.Subtitles.MaxLineChars);
+            if (lines.Count == 0)
+            {
+                logger.LogInformation("В клипе не найдено речи — без субтитров");
+                return null;
+            }
+
+            var language = string.IsNullOrWhiteSpace(transcript.Language) || transcript.Language == "auto"
+                ? "sub" : transcript.Language;
+            var srtPath = Path.ChangeExtension(clipPath, $".{language}.srt");
+            await File.WriteAllTextAsync(srtPath, SubtitleFormatter.ToSrt(lines), ct);
+            logger.LogInformation("Субтитры ({Language}, {Count} строк): {Path}", transcript.Language, lines.Count, srtPath);
+            return srtPath;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Не удалось сделать субтитры: {Error}. Клип будет без них.", ex.Message);
+            return null;
+        }
+        finally
+        {
+            if (File.Exists(wavPath)) File.Delete(wavPath);
         }
     }
 }

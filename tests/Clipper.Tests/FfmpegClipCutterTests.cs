@@ -47,6 +47,36 @@ public class FfmpegClipCutterTests
         Directory.Delete(dir, recursive: true);
     }
 
+    /// <summary>Вшивание субтитров (путь с пробелом проверяет, что ffmpeg запускается из папки с .srt).</summary>
+    [Fact]
+    public async Task BurnsSubtitles_WhenFfmpegInstalled()
+    {
+        if (!FfmpegAvailable()) return;
+
+        var dir = Path.Combine(Directory.CreateTempSubdirectory("clipper-test").FullName, "папка с пробелом");
+        Directory.CreateDirectory(dir);
+        var source = Path.Combine(dir, "source.ts");
+        var srt = Path.Combine(dir, "clip.ru.srt");
+        var output = Path.Combine(dir, "clip.mp4");
+
+        await RunFfmpeg("-f", "lavfi", "-i", "testsrc=size=1280x720:rate=30:duration=6",
+            "-f", "lavfi", "-i", "sine=frequency=440:duration=6",
+            "-c:v", "libx264", "-preset", "ultrafast", "-c:a", "aac", "-f", "mpegts", source);
+        await File.WriteAllTextAsync(srt, "1\n00:00:00,000 --> 00:00:03,000\nпривет, это тест субтитров\n\n");
+
+        var options = new ClipperOptions { Vertical = new VerticalVideoOptions { Width = 360, Height = 640 } };
+        var cutter = new FfmpegClipCutter(options, NullLogger<FfmpegClipCutter>.Instance);
+
+        await cutter.CutAsync(source, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), output, CancellationToken.None, srt);
+        Assert.True(new FileInfo(output).Length > 0);
+
+        var wav = Path.Combine(dir, "clip.wav");
+        await cutter.ExtractAudioAsync(source, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3), wav, CancellationToken.None);
+        Assert.True(new FileInfo(wav).Length > 16000 * 2 * 2); // ~3 с × 16 кГц × 16 бит
+
+        Directory.Delete(Path.GetDirectoryName(dir)!, recursive: true);
+    }
+
     private static bool FfmpegAvailable()
     {
         try

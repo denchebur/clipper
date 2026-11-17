@@ -4,6 +4,8 @@ public enum ClipJobStatus
 {
     /// <summary>Ждём, пока рекордер запишет нужный кусок (конец клипа ещё в будущем).</summary>
     Waiting,
+    /// <summary>Распознаём речь для субтитров.</summary>
+    Transcribing,
     /// <summary>ffmpeg режет клип.</summary>
     Cutting,
     Done,
@@ -27,6 +29,9 @@ public sealed class ClipJob
 
     public ClipJobStatus Status { get; set; } = ClipJobStatus.Waiting;
     public string? OutputPath { get; set; }
+
+    /// <summary>Файл субтитров .srt (если включены и в клипе была речь).</summary>
+    public string? SubtitlesPath { get; set; }
     public string? Error { get; set; }
     public DateTimeOffset CreatedAt { get; } = DateTimeOffset.UtcNow;
 }
