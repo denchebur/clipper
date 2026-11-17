@@ -18,4 +18,7 @@ public sealed record ChatSpike(
 {
     /// <summary>Во сколько раз активность выше обычной.</summary>
     public double Ratio => BaselinePerSecond > 0 ? MessagesPerSecond / BaselinePerSecond : 0;
+
+    /// <summary>Ручной клип на текущий момент (кнопка «Клип сейчас»).</summary>
+    public static ChatSpike Manual() => new(DateTimeOffset.UtcNow, "manual", "manual");
 }

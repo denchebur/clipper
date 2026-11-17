@@ -1,0 +1,148 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Clipper.Desktop.ViewModels"
+        x:Class="Clipper.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="Clipper"
+        Width="900" Height="640" MinWidth="640" MinHeight="480">
+
+  <Window.Styles>
+    <!-- Подписи полей в настройках -->
+    <Style Selector="TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,12,0" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Opacity" Value="0.6" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Grid.form > :is(Control)">
+      <Setter Property="Margin" Value="0,4" />
+    </Style>
+    <Style Selector="Grid.form > TextBlock.hint">
+      <Setter Property="Margin" Value="12,4,0,4" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel Margin="16">
+
+    <!-- ─── Верх: ссылка на стрим и кнопки ─── -->
+    <StackPanel DockPanel.Dock="Top" Spacing="8">
+      <TextBlock Text="Ссылка на стрим (Twitch или YouTube)" />
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBox Text="{Binding Options.StreamUrl}"
+                 Watermark="https://www.twitch.tv/имя_канала"
+                 IsEnabled="{Binding !IsRunning}" />
+        <Button Grid.Column="1" Margin="8,0,0,0" Content="{Binding StartStopText}" Command="{Binding StartStopCommand}"
+                MinWidth="100" HorizontalContentAlignment="Center" Classes="accent" />
+        <Button Grid.Column="2" Margin="8,0,0,0" Content="✂ Клип сейчас" Command="{Binding ClipNowCommand}" />
+      </Grid>
+      <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,8" />
+    </StackPanel>
+
+    <TabControl>
+
+      <!-- ─── Клипы ─── -->
+      <TabItem Header="Клипы">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button Content="Открыть папку клипов" Command="{Binding OpenClipsFolderCommand}" />
+            <TextBlock Text="{Binding Options.ClipsDir}" Classes="hint" />
+          </StackPanel>
+          <ListBox ItemsSource="{Binding Clips}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:ClipRow">
+                <Grid ColumnDefinitions="80,190,60,*,Auto">
+                  <TextBlock Text="{Binding Time}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="{Binding Source}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="2" Text="{Binding Length}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="3" Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                  <Button Grid.Column="4" Content="Открыть" IsVisible="{Binding IsDone}"
+                          Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).OpenClipCommand}"
+                          CommandParameter="{Binding}" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </TabItem>
+
+      <!-- ─── Настройки ─── -->
+      <TabItem Header="Настройки">
+        <ScrollViewer>
+          <StackPanel Spacing="12" Margin="0,8,8,8">
+            <Grid Classes="form" ColumnDefinitions="220,200,*"
+                  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+
+              <TextBlock Grid.Row="0" Classes="label" Text="Качество" />
+              <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Qualities}"
+                        SelectedItem="{Binding Options.Quality}" HorizontalAlignment="Stretch" />
+              <TextBlock Grid.Row="0" Grid.Column="2" Classes="hint" Text="best — максимальное доступное" />
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Секунд до всплеска" />
+              <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Options.SecondsBefore}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="hint" Text="чат реагирует с опозданием, берём с запасом" />
+
+              <TextBlock Grid.Row="2" Classes="label" Text="Секунд после всплеска" />
+              <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Options.SecondsAfter}" />
+
+              <TextBlock Grid.Row="3" Classes="label" Text="Макс. длина клипа, с" />
+              <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Options.MaxClipSeconds}" />
+              <TextBlock Grid.Row="3" Grid.Column="2" Classes="hint" Text="если всплески идут подряд и склеиваются" />
+
+              <TextBlock Grid.Row="4" Classes="label" Text="Поправка на задержку, с" />
+              <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Options.LatencyCorrectionSeconds}" />
+              <TextBlock Grid.Row="4" Grid.Column="2" Classes="hint" Text="увеличьте, если момент в клипе начинается слишком поздно" />
+
+              <TextBlock Grid.Row="5" Classes="label" Text="Вертикальное видео" />
+              <ComboBox Grid.Row="5" Grid.Column="1" ItemsSource="{Binding VerticalModes}"
+                        SelectedItem="{Binding Options.Vertical.Mode}" HorizontalAlignment="Stretch" />
+              <TextBlock Grid.Row="5" Grid.Column="2" Classes="hint" Text="blur — размытый фон, crop — обрезать центр" />
+
+              <TextBlock Grid.Row="6" Classes="label" Text="Размер (ширина × высота)" />
+              <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <TextBox Text="{Binding Options.Vertical.Width}" Width="90" />
+                <TextBlock Text="×" VerticalAlignment="Center" />
+                <TextBox Text="{Binding Options.Vertical.Height}" Width="90" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="7" Classes="label" Text="Папка записей" />
+              <TextBox Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.RecordingsDir}" />
+
+              <TextBlock Grid.Row="8" Classes="label" Text="Папка клипов" />
+              <TextBox Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.ClipsDir}" />
+
+              <TextBlock Grid.Row="9" Classes="label" Text="ffmpeg" />
+              <TextBox Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.FfmpegPath}"
+                       Watermark="ffmpeg или полный путь к программе" />
+
+              <TextBlock Grid.Row="10" Classes="label" Text="streamlink" />
+              <TextBox Grid.Row="10" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.StreamlinkPath}"
+                       Watermark="streamlink или полный путь к программе" />
+
+              <TextBlock Grid.Row="11" Classes="label" Text="Адрес для расширения" />
+              <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding Options.ListenUrl}" />
+              <TextBlock Grid.Row="11" Grid.Column="2" Classes="hint" Text="тот же адрес укажите в настройках расширения" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button Content="Сохранить настройки" Command="{Binding SaveSettingsCommand}" />
+              <TextBlock Classes="hint" Text="{Binding SettingsPath, StringFormat='Файл: {0}'}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ─── Лог ─── -->
+      <TabItem Header="Лог">
+        <DockPanel>
+          <Button DockPanel.Dock="Bottom" Content="Очистить" Command="{Binding ClearLogCommand}" Margin="0,8,0,0" />
+          <ListBox ItemsSource="{Binding Log}" FontFamily="Consolas,Menlo,monospace" FontSize="12" />
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

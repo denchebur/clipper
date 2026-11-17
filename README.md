@@ -29,7 +29,9 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
 | `src/Clipper.Core` | Models (`ChatSpike`, `ClipJob`, `RecordingSession`), `ClipperOptions`, module interfaces, `ClipPlanner` |
 | `src/Clipper.Recorder` | `StreamlinkRecorder`: records the stream |
 | `src/Clipper.Cutter` | `FfmpegClipCutter`: cutting and vertical format |
-| `src/Clipper.App` | Entry point: HTTP API, background services, `appsettings.json` |
+| `src/Clipper.Server` | Wires the core together: HTTP API, background recorder and clip worker (`ClipperServer.Build`) |
+| `src/Clipper.App` | Console entry point, reads `appsettings.json` |
+| `src/Clipper.Desktop` | Desktop client (Avalonia, Windows / macOS / Linux): stream link, settings, start/stop, clip list, log |
 | `tests/Clipper.Tests` | xUnit tests |
 | `extension/` | Chrome/Edge extension (Manifest V3) |
 
@@ -41,7 +43,24 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
 
 Check: `ffmpeg -version` and `streamlink --version` should work in a terminal.
 
-## Running
+## Running the desktop client (recommended)
+
+- **Visual Studio:** open `Clipper.sln`, set `Clipper.Desktop` as the startup project, press F5.
+  For a XAML previewer install the "Avalonia for Visual Studio" extension (optional).
+- **Terminal (Windows or macOS):** `dotnet run --project src/Clipper.Desktop`
+
+Paste the stream link, press **▶ Старт**, and the core starts inside the client on `http://127.0.0.1:5055`, so the browser extension works the same way. The **Настройки** tab holds all options; they are saved to `settings.json` (Windows: `%APPDATA%\Clipper`, macOS: `~/Library/Application Support/Clipper`). By default recordings and clips go to `Videos/Clipper` (`~/Movies/Clipper` on macOS).
+
+On macOS, install the tools with Homebrew: `brew install ffmpeg streamlink`. The client also looks in `/opt/homebrew/bin` and `/usr/local/bin`, because apps started from Finder don't see the terminal's `PATH`.
+
+Build a standalone app that runs without the .NET SDK:
+```
+dotnet publish src/Clipper.Desktop -c Release -r win-x64 --self-contained
+dotnet publish src/Clipper.Desktop -c Release -r osx-arm64 --self-contained   # Apple Silicon (osx-x64 for Intel)
+```
+The result is in `src/Clipper.Desktop/bin/Release/net8.0/<runtime>/publish/`.
+
+## Running the console core (without the client)
 
 1. Set the stream in `src/Clipper.App/appsettings.json`:
    ```json
