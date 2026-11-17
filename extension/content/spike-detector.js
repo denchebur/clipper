@@ -13,6 +13,24 @@ class SpikeDetector {
     this.timestamps.push(time);
   }
 
+  // Текущие цифры для отладки: сколько сообщений в окне, текущая и обычная скорость.
+  stats(now = Date.now()) {
+    const s = this.settings;
+    const windowStart = now - s.windowSeconds * 1000;
+    const baselineMs = s.baselineSeconds * 1000;
+    const recent = this.timestamps.filter((t) => t >= windowStart).length;
+    const older = this.timestamps.filter((t) => t < windowStart && t >= windowStart - baselineMs).length;
+    const observedMs = Math.min(baselineMs, windowStart - this.startedAt);
+    const warmUpLeftMs = baselineMs / 2 - (now - this.startedAt);
+    return {
+      recent,
+      rate: recent / s.windowSeconds,
+      baseline: observedMs > 0 ? older / (observedMs / 1000) : 0,
+      warmingUp: warmUpLeftMs > 0,
+      warmUpLeftSeconds: Math.max(0, Math.ceil(warmUpLeftMs / 1000)),
+    };
+  }
+
   // Вызывается раз в секунду. Возвращает объект всплеска или null.
   check(now = Date.now()) {
     const s = this.settings;
