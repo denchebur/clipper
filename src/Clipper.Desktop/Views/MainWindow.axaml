@@ -98,6 +98,26 @@
         </DockPanel>
       </TabItem>
 
+      <!-- ─── Расширение ─── -->
+      <TabItem Header="Расширение">
+        <ScrollViewer>
+          <StackPanel Spacing="10" Margin="0,4,8,0">
+            <TextBlock TextWrapping="Wrap"
+                       Text="Расширение для Chrome (или Edge, Brave, Opera) следит за чатом стрима и сообщает программе о всплесках активности. Без него клипы делаются только кнопкой ✂." />
+            <Button Content="1. Подготовить папку расширения" Command="{Binding PrepareExtensionCommand}" />
+            <TextBlock Text="{Binding ExtensionDir}" Classes="hint" />
+            <TextBlock Text="{Binding ExtensionStatus}" TextWrapping="Wrap" />
+            <TextBlock TextWrapping="Wrap" Text="2. Откройте в браузере адрес chrome://extensions (в Edge: edge://extensions)." />
+            <TextBlock TextWrapping="Wrap" Text="3. Включите «Режим разработчика» (переключатель справа вверху; в Edge слева внизу)." />
+            <TextBlock TextWrapping="Wrap" Text="4. Нажмите «Загрузить распакованное расширение» и выберите папку chrome-extension из шага 1." />
+            <TextBlock TextWrapping="Wrap" Text="5. Закрепите значок Clipper (пазл ▸ булавка). В его окне можно настроить чувствительность." />
+            <TextBlock TextWrapping="Wrap" Text="6. Нажмите ▶ Старт здесь и откройте вкладку с чатом каждого стрима, который пишете (Twitch: страница канала или /popout/канал/chat; YouTube: страница трансляции с чатом). Вкладка должна оставаться открытой." />
+            <TextBlock TextWrapping="Wrap" Classes="hint"
+                       Text="После обновления программы снова нажмите шаг 1, затем ⟳ у расширения в chrome://extensions." />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
       <!-- ─── Настройки ─── -->
       <TabItem Header="Настройки">
         <ScrollViewer>

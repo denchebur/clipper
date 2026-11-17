@@ -184,6 +184,53 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ClearLog() => Log.Clear();
 
+    // ─── Расширение для Chrome ───
+
+    /// <summary>
+    /// Куда копируем расширение: в обычную видимую папку, чтобы её было легко выбрать в Chrome
+    /// («Загрузить распакованное»). Папку внутри Clipper.app или Program Files Chrome выбрать неудобно.
+    /// </summary>
+    public string ExtensionDir { get; } = OperatingSystem.IsWindows()
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Clipper", "chrome-extension")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Clipper", "chrome-extension");
+
+    [ObservableProperty] private string _extensionStatus = "";
+
+    /// <summary>Копирует расширение (из папки программы) в ExtensionDir и открывает эту папку.</summary>
+    [RelayCommand]
+    private async Task PrepareExtensionAsync()
+    {
+        var source = Path.Combine(AppContext.BaseDirectory, "extension");
+        if (!File.Exists(Path.Combine(source, "manifest.json")))
+        {
+            ExtensionStatus = $"Не нашёл расширение рядом с программой ({source}). Возьмите папку extension из репозитория или архив из релиза.";
+            return;
+        }
+
+        try
+        {
+            CopyDirectory(source, ExtensionDir);
+            ExtensionStatus = $"Готово: {ExtensionDir}. Если расширение уже было установлено, нажмите ⟳ (обновить) у него в chrome://extensions.";
+            if (Launcher is not null)
+                await Launcher.LaunchDirectoryInfoAsync(new DirectoryInfo(ExtensionDir));
+        }
+        catch (Exception ex)
+        {
+            ExtensionStatus = "Не удалось скопировать: " + ex.Message;
+        }
+    }
+
+    private static void CopyDirectory(string from, string to)
+    {
+        Directory.CreateDirectory(to);
+        foreach (var file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(to, Path.GetRelativePath(from, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+    }
+
     // ─── YouTube Shorts ───
 
     /// <summary>Нужен, чтобы выбрать файл client_secret.json. Задаётся окном.</summary>

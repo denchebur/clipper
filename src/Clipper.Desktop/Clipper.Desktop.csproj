@@ -21,6 +21,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Расширение для Chrome кладём рядом с программой (папка extension), чтобы оно попало в установщики.
+         Кнопка на вкладке «Расширение» копирует его в видимую папку пользователя. -->
+    <Content Include="..\..\extension\**\*" Link="extension\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Clipper.Server\Clipper.Server.csproj" />
   </ItemGroup>
 
