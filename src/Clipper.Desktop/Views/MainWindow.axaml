@@ -29,17 +29,38 @@
 
   <DockPanel Margin="16">
 
-    <!-- ─── Верх: ссылка на стрим и кнопки ─── -->
+    <!-- ─── Верх: стримы и кнопки ─── -->
     <StackPanel DockPanel.Dock="Top" Spacing="8">
-      <TextBlock Text="Ссылка на стрим (Twitch или YouTube)" />
       <Grid ColumnDefinitions="*,Auto,Auto">
-        <TextBox Text="{Binding Options.StreamUrl}"
-                 Watermark="https://www.twitch.tv/имя_канала"
-                 IsEnabled="{Binding !IsRunning}" />
+        <TextBlock Text="Стримы (Twitch или YouTube), пишутся одновременно" VerticalAlignment="Center" />
         <Button Grid.Column="1" Margin="8,0,0,0" Content="{Binding StartStopText}" Command="{Binding StartStopCommand}"
                 MinWidth="100" HorizontalContentAlignment="Center" Classes="accent" />
-        <Button Grid.Column="2" Margin="8,0,0,0" Content="✂ Клип сейчас" Command="{Binding ClipNowCommand}" />
+        <Button Grid.Column="2" Margin="8,0,0,0" Content="✂ Клип со всех" Command="{Binding ClipNowCommand}" />
       </Grid>
+
+      <ScrollViewer MaxHeight="150">
+        <ItemsControl ItemsSource="{Binding Streams}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:StreamRow">
+              <Grid ColumnDefinitions="*,170,Auto,Auto" Margin="0,2">
+                <TextBox Text="{Binding Url}" Watermark="https://www.twitch.tv/имя_канала"
+                         IsEnabled="{Binding !$parent[Window].((vm:MainViewModel)DataContext).IsRunning}" />
+                <TextBlock Grid.Column="1" Text="{Binding Status}" VerticalAlignment="Center" Margin="8,0,0,0"
+                           TextTrimming="CharacterEllipsis" Opacity="0.8" />
+                <Button Grid.Column="2" Content="✂" ToolTip.Tip="Клип сейчас с этого стрима" Margin="4,0,0,0"
+                        IsVisible="{Binding IsRecording}"
+                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ClipStreamCommand}"
+                        CommandParameter="{Binding}" />
+                <Button Grid.Column="3" Content="✕" ToolTip.Tip="Убрать стрим" Margin="4,0,0,0"
+                        IsVisible="{Binding !$parent[Window].((vm:MainViewModel)DataContext).IsRunning}"
+                        Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RemoveStreamCommand}"
+                        CommandParameter="{Binding}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <Button Content="+ Добавить стрим" Command="{Binding AddStreamCommand}" IsVisible="{Binding !IsRunning}" />
       <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap" Opacity="0.8" Margin="0,0,0,8" />
     </StackPanel>
 
@@ -82,7 +103,7 @@
         <ScrollViewer>
           <StackPanel Spacing="12" Margin="0,8,8,8">
             <Grid Classes="form" ColumnDefinitions="220,200,*"
-                  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
               <TextBlock Grid.Row="0" Classes="label" Text="Качество" />
               <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding Qualities}"
@@ -133,6 +154,14 @@
               <TextBlock Grid.Row="11" Classes="label" Text="Адрес для расширения" />
               <TextBox Grid.Row="11" Grid.Column="1" Text="{Binding Options.ListenUrl}" />
               <TextBlock Grid.Row="11" Grid.Column="2" Classes="hint" Text="тот же адрес укажите в настройках расширения" />
+
+              <TextBlock Grid.Row="12" Classes="label" Text="Хранить записи, мин" />
+              <TextBox Grid.Row="12" Grid.Column="1" Text="{Binding Options.KeepRecordingsMinutes}" />
+              <TextBlock Grid.Row="12" Grid.Column="2" Classes="hint" Text="старые записи стримов удаляются (0 — не удалять); клипы остаются всегда" />
+
+              <TextBlock Grid.Row="13" Classes="label" Text="Новый файл записи каждые, мин" />
+              <TextBox Grid.Row="13" Grid.Column="1" Text="{Binding Options.RotateRecordingMinutes}" />
+              <TextBlock Grid.Row="13" Grid.Column="2" Classes="hint" Text="чтобы длинный стрим не копился в одном огромном файле" />
             </Grid>
 
             <TextBlock Text="Субтитры" FontSize="18" Margin="0,8,0,0" />

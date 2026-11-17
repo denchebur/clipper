@@ -11,7 +11,7 @@ public sealed record ShortsMetadata(string Title, string Description, IReadOnlyL
     public static ShortsMetadata Build(ClipJob job, ClipperOptions options)
     {
         var yt = options.YouTube;
-        var channel = job.Spikes.FirstOrDefault(s => s.Platform != "manual")?.Channel ?? ChannelFromUrl(options.StreamUrl);
+        var channel = job.Stream.Key;
         var text = FirstWords(job.TranscriptText, TextWords);
         if (string.IsNullOrEmpty(text))
             text = $"Момент со стрима {channel}";
@@ -21,7 +21,7 @@ public sealed record ShortsMetadata(string Title, string Description, IReadOnlyL
             .Replace("{text}", text)
             .Replace("{channel}", channel)
             .Replace("{date}", job.Start.ToLocalTime().ToString("dd.MM.yyyy"))
-            .Replace("{stream}", options.StreamUrl)
+            .Replace("{stream}", job.Stream.Url)
             .Trim();
 
         var title = Fill(yt.TitleTemplate).Replace("<", "").Replace(">", ""); // YouTube не принимает < >
@@ -39,10 +39,4 @@ public sealed record ShortsMetadata(string Title, string Description, IReadOnlyL
         var result = string.Join(' ', words.Take(count)).TrimEnd(',', '.', ' ');
         return words.Length > count ? result + "…" : result;
     }
-
-    // https://www.twitch.tv/имя → имя
-    private static string ChannelFromUrl(string url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Segments.Length > 1
-            ? uri.Segments[1].Trim('/')
-            : "стрим";
 }

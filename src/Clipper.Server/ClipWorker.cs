@@ -15,7 +15,7 @@ namespace Clipper.Server;
 public sealed class ClipWorker(
     ClipperOptions options,
     ClipPlanner planner,
-    IStreamRecorder recorder,
+    RecorderPool recorders,
     IClipCutter cutter,
     ITranscriber transcriber,
     ClipUploader uploader,
@@ -44,8 +44,14 @@ public sealed class ClipWorker(
         {
             var now = DateTimeOffset.UtcNow;
 
-            // Берём запись, в которой есть конец клипа. Если клип начинается раньше записи — обрезаем начало.
-            var session = recorder.Sessions.LastOrDefault(s => s.StartedAt < job.End && (s.EndedAt ?? now) >= job.End)
+            var recorder = recorders.Find(job.Stream)
+                ?? throw new InvalidOperationException($"Стрим {job.Stream.Key} не записывается.");
+
+            // Лучше всего — файл, где есть весь клип целиком. Если такого нет (запись началась
+            // позже начала клипа), берём файл с концом клипа и обрезаем начало.
+            var sessions = recorder.Sessions;
+            var session = sessions.LastOrDefault(s => s.Covers(job.Start, job.End, now))
+                ?? sessions.LastOrDefault(s => s.StartedAt < job.End && (s.EndedAt ?? now) >= job.End)
                 ?? throw new InvalidOperationException("Нет записи, которая покрывает этот момент.");
 
             var start = job.Start > session.StartedAt ? job.Start : session.StartedAt;
@@ -53,9 +59,10 @@ public sealed class ClipWorker(
             if (duration < MinClipLength)
                 throw new InvalidOperationException("Слишком короткий кусок записи для клипа.");
 
-            var platform = job.Spikes.FirstOrDefault()?.Platform ?? "clip";
-            var output = Path.GetFullPath(Path.Combine(options.ClipsDir,
-                $"clip_{start.ToLocalTime():yyyy-MM-dd_HH-mm-ss}_{platform}.mp4"));
+            // clips/имя_канала/2026-11-17/clip_18-12-13.mp4
+            var local = start.ToLocalTime();
+            var output = Path.GetFullPath(Path.Combine(options.ClipsDir, job.Stream.Key,
+                local.ToString("yyyy-MM-dd"), $"clip_{local:HH-mm-ss}.mp4"));
 
             var offset = start - session.StartedAt;
 

@@ -21,8 +21,8 @@ public sealed class ClipPlanner
         get { lock (_lock) return _jobs.OrderByDescending(j => j.CreatedAt).ToList(); }
     }
 
-    /// <summary>Добавляет всплеск. Возвращает задание, в которое он попал.</summary>
-    public ClipJob AddSpike(ChatSpike spike)
+    /// <summary>Добавляет всплеск стрима stream. Возвращает задание, в которое он попал.</summary>
+    public ClipJob AddSpike(ChatSpike spike, StreamSource stream)
     {
         var moment = spike.Timestamp - TimeSpan.FromSeconds(_options.LatencyCorrectionSeconds);
         var start = moment - TimeSpan.FromSeconds(_options.SecondsBefore);
@@ -33,7 +33,7 @@ public sealed class ClipPlanner
         {
             // Ищем ожидающий клип, с которым новый отрезок пересекается.
             var existing = _jobs.FirstOrDefault(j =>
-                j.Status == ClipJobStatus.Waiting && start <= j.End && end >= j.Start);
+                j.Stream.Key == stream.Key && j.Status == ClipJobStatus.Waiting && start <= j.End && end >= j.Start);
 
             if (existing is not null)
             {
@@ -47,7 +47,7 @@ public sealed class ClipPlanner
                 return existing;
             }
 
-            var job = new ClipJob { Start = start, End = end };
+            var job = new ClipJob { Stream = stream, Start = start, End = end };
             job.Spikes.Add(spike);
             _jobs.Add(job);
             return job;

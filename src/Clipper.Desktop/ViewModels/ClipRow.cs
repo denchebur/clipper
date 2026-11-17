@@ -27,7 +27,9 @@ public partial class ClipRow : ObservableObject
     {
         var spike = job.Spikes.FirstOrDefault();
         Time = job.Start.ToLocalTime().ToString("HH:mm:ss");
-        Source = spike is null ? "" : spike.Platform == "manual" ? "вручную" : $"{spike.Platform} ({job.Spikes.Count} всплеск.)";
+        Source = spike is null ? job.Stream.Key
+            : spike.Platform == "manual" ? $"{job.Stream.Key} · вручную"
+            : $"{job.Stream.Key} · {job.Spikes.Count} всплеск.";
         Length = $"{job.Duration.TotalSeconds:0} с";
         Status = job.Status switch
         {

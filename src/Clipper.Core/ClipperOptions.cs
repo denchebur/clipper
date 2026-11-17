@@ -10,8 +10,22 @@ public sealed class ClipperOptions
     /// <summary>Адрес HTTP API ядра. Его же указывает расширение в своих настройках.</summary>
     public string ListenUrl { get; set; } = "http://127.0.0.1:5055";
 
-    /// <summary>Ссылка на стрим, например https://www.twitch.tv/имя_канала.</summary>
+    /// <summary>
+    /// Ссылки на стримы, которые пишем одновременно, например https://www.twitch.tv/имя_канала.
+    /// Клипы каждого стрима попадают в свою папку: clips/имя_канала/дата/.
+    /// </summary>
+    public List<string> Streams { get; set; } = new();
+
+    /// <summary>Старая настройка (одна ссылка). Если Streams пуст, используется она.</summary>
     public string StreamUrl { get; set; } = "";
+
+    /// <summary>Все стримы из настроек в разобранном виде (без пустых и повторов).</summary>
+    public IReadOnlyList<Models.StreamSource> GetStreams() =>
+        (Streams.Count > 0 ? Streams : new List<string> { StreamUrl })
+            .Where(u => !string.IsNullOrWhiteSpace(u))
+            .Select(Models.StreamSource.FromUrl)
+            .DistinctBy(s => s.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
     /// <summary>Качество для streamlink: best, 1080p60, 720p и т.д.</summary>
     public string Quality { get; set; } = "best";
@@ -39,6 +53,15 @@ public sealed class ClipperOptions
 
     /// <summary>Через сколько секунд после обрыва перезапускать запись.</summary>
     public double RecorderRestartDelaySeconds { get; set; } = 15;
+
+    /// <summary>
+    /// Раз в столько минут запись начинается в новый файл (старый дописывается
+    /// ещё немного, чтобы клип на стыке не потерялся). Нужно, чтобы старые куски можно было удалять.
+    /// </summary>
+    public double RotateRecordingMinutes { get; set; } = 30;
+
+    /// <summary>Сколько минут хранить записи стрима. 0 — не удалять. Готовые клипы не удаляются никогда.</summary>
+    public double KeepRecordingsMinutes { get; set; } = 120;
 
     public VerticalVideoOptions Vertical { get; set; } = new();
 
