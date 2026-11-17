@@ -17,7 +17,7 @@ public static class ExternalProcess
         CancellationToken cancellationToken,
         Action<string>? onStdErrLine = null)
     {
-        var psi = new ProcessStartInfo(fileName)
+        var psi = new ProcessStartInfo(ResolveExecutable(fileName))
         {
             RedirectStandardError = true,
             RedirectStandardOutput = true,
@@ -71,5 +71,33 @@ public static class ExternalProcess
         string text;
         lock (tail) text = string.Join(Environment.NewLine, tail);
         return new Result(process.ExitCode, text);
+    }
+
+    /// <summary>
+    /// Находит программу по имени ("ffmpeg") в PATH и в типичных папках Homebrew.
+    /// На macOS приложение, запущенное из Finder, не видит PATH терминала,
+    /// поэтому /opt/homebrew/bin и /usr/local/bin проверяем сами.
+    /// Если передан полный путь или ничего не нашлось, возвращает имя как есть.
+    /// </summary>
+    public static string ResolveExecutable(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name) || Path.IsPathRooted(name) || name.Contains(Path.DirectorySeparatorChar))
+            return name;
+
+        var dirs = (Environment.GetEnvironmentVariable("PATH") ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Concat(new[] { "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin" });
+
+        var candidates = OperatingSystem.IsWindows() && !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            ? new[] { name + ".exe", name }
+            : new[] { name };
+
+        foreach (var dir in dirs)
+        foreach (var candidate in candidates)
+        {
+            var full = Path.Combine(dir, candidate);
+            if (File.Exists(full)) return full;
+        }
+        return name;
     }
 }

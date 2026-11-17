@@ -1,15 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Clipper.Core\Clipper.Core.csproj" />
-    <ProjectReference Include="..\Clipper.Recorder\Clipper.Recorder.csproj" />
-    <ProjectReference Include="..\Clipper.Cutter\Clipper.Cutter.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Clipper.Server\Clipper.Server.csproj" />
+  </ItemGroup>
 
 </Project>

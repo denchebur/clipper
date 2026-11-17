@@ -1,6 +1,8 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Clipper.Core.Abstractions;
 
-namespace Clipper.App;
+namespace Clipper.Server;
 
 /// <summary>Запускает рекордер в фоне вместе с приложением.</summary>
 public sealed class RecorderService(IStreamRecorder recorder) : BackgroundService

@@ -1,9 +1,11 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Clipper.Core;
 using Clipper.Core.Abstractions;
 using Clipper.Core.Models;
 using Clipper.Core.Planning;
 
-namespace Clipper.App;
+namespace Clipper.Server;
 
 /// <summary>
 /// Раз в пару секунд проверяет, какие клипы уже можно вырезать

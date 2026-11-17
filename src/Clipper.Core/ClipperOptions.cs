@@ -7,6 +7,9 @@ public sealed class ClipperOptions
 {
     public const string SectionName = "Clipper";
 
+    /// <summary>Адрес HTTP API ядра. Его же указывает расширение в своих настройках.</summary>
+    public string ListenUrl { get; set; } = "http://127.0.0.1:5055";
+
     /// <summary>Ссылка на стрим, например https://www.twitch.tv/имя_канала.</summary>
     public string StreamUrl { get; set; } = "";
 
