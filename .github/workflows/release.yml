@@ -8,7 +8,7 @@ on:
   push:
     tags: ["v*"]
   pull_request:
-    paths: ["src/**", "tests/**", "build/**", ".github/workflows/release.yml", "*.sln"]
+    paths: ["src/**", "tests/**", "build/**", "extension/**", ".github/workflows/release.yml", "*.sln"]
   workflow_dispatch:
 
 permissions:
@@ -67,10 +67,15 @@ jobs:
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: dist
+      # Расширение отдельным архивом — для тех, кто ставит его без программы или вручную.
+      - name: Extension zip
+        run: cd extension && zip -qr "../dist/Clipper-extension-${GITHUB_REF_NAME#v}.zip" .
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/**/*
+          body_path: build/release-notes.md
           generate_release_notes: true

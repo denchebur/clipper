@@ -50,10 +50,12 @@ Check: `ffmpeg -version` and `streamlink --version` should work in a terminal.
 
 Installers are built by GitHub Actions (`.github/workflows/release.yml`):
 
-- **Download:** push a tag like `v1.0.0` (`git tag v1.0.0 && git push origin v1.0.0`), and a GitHub **Release** appears with `ClipperSetup-1.0.0-win-x64.exe` and `Clipper-1.0.0-osx-arm64.dmg` / `osx-x64.dmg`. Without a tag, every PR build has them under **Actions → run → Artifacts**.
+- **Download:** push a tag like `v1.0.0` (`git tag v1.0.0 && git push origin v1.0.0`), and a GitHub **Release** appears with `ClipperSetup-1.0.0-win-x64.exe`, `Clipper-1.0.0-osx-arm64.dmg` / `osx-x64.dmg` and `Clipper-extension-1.0.0.zip`. Share the link `https://github.com/denchebur/clipper/releases/latest`. Without a tag, every PR build has them under **Actions → run → Artifacts**.
 - **Windows:** run `ClipperSetup-….exe`. It installs into your user profile without admin rights and adds Start menu and desktop shortcuts. Windows SmartScreen may warn that the app is unknown (it isn't code-signed): click **More info → Run anyway**.
 - **macOS:** open the `.dmg` and drag **Clipper** to **Applications**. The app isn't notarized by Apple, so the first launch needs **right-click → Open → Open**, or in Terminal: `xattr -dr com.apple.quarantine /Applications/Clipper.app`.
 - ffmpeg and streamlink are still installed separately (see Prerequisites).
+- **Extension:** the app ships with it. Open the **Расширение** tab, press **Подготовить папку расширения** (copies it to `Documents\Clipper\chrome-extension` / `~/Clipper/chrome-extension`), then in `chrome://extensions` turn on Developer mode → **Load unpacked** → pick that folder. The Release also has `Clipper-extension-….zip`.
+- The text shown on the Release page (download table + install steps) lives in `build/release-notes.md`.
 
 Build locally: `build\windows\build.ps1 1.0.0` (needs Inno Setup 6) or `./build/macos/make-app.sh osx-arm64 1.0.0` (on a Mac).
 
