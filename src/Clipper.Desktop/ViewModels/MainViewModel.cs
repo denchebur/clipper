@@ -7,6 +7,7 @@ using Clipper.Core.Models;
 using Clipper.Core.Planning;
 using Clipper.Desktop.Services;
 using Clipper.Server;
+using Clipper.YouTube;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.AspNetCore.Builder;
@@ -30,6 +31,7 @@ public partial class MainViewModel : ObservableObject
     {
         Options = SettingsStore.Load();
         _refreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Refresh());
+        _ = UpdateGoogleStatusAsync();
     }
 
     /// <summary>Настройки, к которым привязана форма. Сохраняются в settings.json.</summary>
@@ -38,6 +40,7 @@ public partial class MainViewModel : ObservableObject
     public string[] Qualities { get; } = { "best", "1080p60", "1080p", "720p60", "720p", "480p" };
     public string[] VerticalModes { get; } = { "blur", "crop" };
     public string[] WhisperModels { get; } = { "tiny", "base", "small", "medium", "largev3turbo" };
+    public string[] PrivacyOptions { get; } = { "private", "unlisted", "public" };
 
     public ObservableCollection<ClipRow> Clips { get; } = new();
     public ObservableCollection<string> Log { get; } = new();
@@ -138,6 +141,82 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void ClearLog() => Log.Clear();
+
+    // ─── YouTube Shorts ───
+
+    /// <summary>Нужен, чтобы выбрать файл client_secret.json. Задаётся окном.</summary>
+    public IStorageProvider? StorageProvider { get; set; }
+
+    [ObservableProperty] private string _googleStatus = "";
+    [ObservableProperty] private bool _isGoogleSignedIn;
+
+    [RelayCommand]
+    private async Task PickClientSecretsAsync()
+    {
+        if (StorageProvider is null) return;
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Файл ключа Google (client_secret….json)",
+            FileTypeFilter = new[] { new FilePickerFileType("JSON") { Patterns = new[] { "*.json" } } },
+        });
+        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path)
+        {
+            Options.YouTube.ClientSecretsPath = path;
+            OnPropertyChanged(nameof(Options));
+            SettingsStore.Save(Options);
+        }
+    }
+
+    [RelayCommand]
+    private async Task GoogleSignInAsync()
+    {
+        try
+        {
+            GoogleStatus = "Откройте браузер и разрешите доступ…";
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            var channel = await new YouTubeAuth(Options.YouTube).SignInAsync(cts.Token);
+            IsGoogleSignedIn = true;
+            GoogleStatus = $"Вход выполнен: канал «{channel}»";
+            SettingsStore.Save(Options);
+        }
+        catch (Exception ex)
+        {
+            GoogleStatus = "Не удалось войти: " + ex.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task GoogleSignOutAsync()
+    {
+        await new YouTubeAuth(Options.YouTube).SignOutAsync();
+        IsGoogleSignedIn = false;
+        GoogleStatus = "Вы вышли из Google.";
+    }
+
+    private async Task UpdateGoogleStatusAsync()
+    {
+        IsGoogleSignedIn = await new YouTubeAuth(Options.YouTube).IsSignedInAsync();
+        GoogleStatus = IsGoogleSignedIn ? "Вход в Google выполнен." : "Вход в Google не выполнен.";
+    }
+
+    [RelayCommand]
+    private async Task UploadClipAsync(ClipRow? row)
+    {
+        if (row is null || _server is null) return;
+        var job = _server.Services.GetRequiredService<ClipPlanner>().Jobs.FirstOrDefault(j => j.Id == row.Id);
+        if (job is null) return;
+        var task = _server.Services.GetRequiredService<ClipUploader>().UploadAsync(job, CancellationToken.None);
+        Refresh();
+        await task;
+        Refresh();
+    }
+
+    [RelayCommand]
+    private async Task OpenYouTubeAsync(ClipRow? row)
+    {
+        if (row?.YouTubeUrl is { } url && Launcher is not null)
+            await Launcher.LaunchUriAsync(new Uri(url));
+    }
 
     /// <summary>Вызывается окном при закрытии.</summary>
     public async Task ShutdownAsync()

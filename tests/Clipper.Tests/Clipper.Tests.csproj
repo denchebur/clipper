@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Clipper.Core\Clipper.Core.csproj" />
     <ProjectReference Include="..\..\src\Clipper.Cutter\Clipper.Cutter.csproj" />
+    <ProjectReference Include="..\..\src\Clipper.Server\Clipper.Server.csproj" />
   </ItemGroup>
 
 </Project>

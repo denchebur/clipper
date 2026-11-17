@@ -31,6 +31,7 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
 | `src/Clipper.Recorder` | `StreamlinkRecorder`: records the stream |
 | `src/Clipper.Cutter` | `FfmpegClipCutter`: cutting, vertical format, burning in subtitles |
 | `src/Clipper.Subtitles` | `WhisperTranscriber`: local speech recognition |
+| `src/Clipper.YouTube` | `YouTubeAuth` (Google sign-in) and `YouTubeShortsPublisher` (upload) |
 | `src/Clipper.Server` | Wires the core together: HTTP API, background recorder and clip worker (`ClipperServer.Build`) |
 | `src/Clipper.App` | Console entry point, reads `appsettings.json` |
 | `src/Clipper.Desktop` | Desktop client (Avalonia, Windows / macOS / Linux): stream link, settings, start/stop, clip list, log |
@@ -80,6 +81,28 @@ The result is in `src/Clipper.Desktop/bin/Release/net8.0/<runtime>/publish/`.
 
 The "✂ Клип сейчас" (clip now) button in the extension popup queues a clip manually, without a spike.
 
+## YouTube Shorts upload
+
+Finished clips can be uploaded to YouTube Shorts automatically (checkbox **Загружать автоматически**) or one by one with the **В Shorts** button in the clip list. The title is built from the beginning of the transcribed speech, and the description includes the stream link (templates are in the settings).
+
+### One-time Google setup (~10 minutes)
+
+YouTube only accepts uploads from apps registered in Google Cloud, so you need your own key:
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project (any name, e.g. "Clipper").
+2. **APIs & Services → Library**, find **YouTube Data API v3**, press **Enable**.
+3. **Google Auth Platform** (OAuth consent screen): choose **External**, fill in the app name and your email. Under **Audience → Test users** add the Google account that owns your YouTube channel.
+4. **Clients → Create client**, type **Desktop app**, then download the JSON (`client_secret_….json`).
+5. In Clipper: **Настройки → YouTube Shorts → Ключ Google → Выбрать…**, pick that file, then press **Войти через Google** and allow access in the browser.
+
+The sign-in token is stored next to `settings.json`, so you only sign in once.
+
+### Limits to know about
+
+- **Private only until audit.** YouTube makes videos uploaded through the API by an unverified Google project **private**. To publish as public/unlisted, the project has to pass the [YouTube API audit](https://support.google.com/youtube/contact/yt_api_form). Until then, upload as private and switch visibility in YouTube Studio.
+- **Weekly re-login in testing mode.** While the consent screen is in "Testing", Google expires the sign-in after 7 days, so press **Войти через Google** again. Publishing the app (Audience → Publish app) removes that.
+- **Daily quota.** The default quota is 10,000 units per day, and one upload costs a large share of it (1,600 units at the time of writing), so only a handful of uploads per day fit. More quota can be requested in Google Cloud.
+
 ## Core API
 
 | Method | What it does |
@@ -87,6 +110,7 @@ The "✂ Клип сейчас" (clip now) button in the extension popup queues 
 | `GET /api/status` | Current recordings and clip list with statuses |
 | `POST /api/spikes` | A spike: `{"timestamp":"2026-11-17T16:43:09Z","platform":"twitch","channel":"name","messagesPerSecond":6,"baselinePerSecond":1}` |
 | `POST /api/clip-now` | Clip at the current moment |
+| `POST /api/clips/{id}/upload` | Upload a finished clip to YouTube Shorts |
 
 Test without the extension (PowerShell):
 ```powershell
@@ -119,7 +143,7 @@ The cutter test generates a test video and cuts it with real ffmpeg. If ffmpeg i
 
 ## Next steps
 
-- Auto-publishing clips to TikTok / YouTube Shorts.
+- Auto-publishing clips to TikTok.
 - Captions and a "Watch the stream live: link" overlay.
 - Deleting old recordings so the disk doesn't fill up.
 - A smarter detector: emotes, "KEKW", donations.

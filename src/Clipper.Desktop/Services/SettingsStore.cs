@@ -29,8 +29,14 @@ public static class SettingsStore
         options ??= CreateDefault();
 
         // Модели Whisper храним рядом с настройками, если путь не задан явно.
+        var appDir = Path.GetDirectoryName(FilePath)!;
         if (!Path.IsPathRooted(options.Subtitles.ModelsDir))
-            options.Subtitles.ModelsDir = Path.Combine(Path.GetDirectoryName(FilePath)!, "models");
+            options.Subtitles.ModelsDir = Path.Combine(appDir, "models");
+        // Токен входа в Google тоже храним рядом с настройками.
+        if (!Path.IsPathRooted(options.YouTube.TokenDir))
+            options.YouTube.TokenDir = Path.Combine(appDir, "youtube-token");
+        if (!Path.IsPathRooted(options.YouTube.ClientSecretsPath))
+            options.YouTube.ClientSecretsPath = Path.Combine(appDir, options.YouTube.ClientSecretsPath);
         return options;
     }
 
