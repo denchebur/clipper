@@ -44,7 +44,7 @@ jobs:
           path: build/windows/Output/*.exe
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     strategy:
       matrix:
         rid: [osx-arm64, osx-x64]
