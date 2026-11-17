@@ -20,6 +20,8 @@ public partial class ClipRow : ObservableObject
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private string? _outputPath;
     [ObservableProperty] private bool _isDone;
+    [ObservableProperty] private bool _canUpload;
+    [ObservableProperty] private string? _youTubeUrl;
 
     public void Update(ClipJob job)
     {
@@ -36,7 +38,16 @@ public partial class ClipRow : ObservableObject
             ClipJobStatus.Failed => "ошибка: " + job.Error,
             _ => job.Status.ToString(),
         };
+        Status += job.Upload switch
+        {
+            UploadState.Uploading => " · загружаю в Shorts…",
+            UploadState.Uploaded => " · в Shorts",
+            UploadState.Failed => " · ошибка загрузки: " + job.UploadError,
+            _ => "",
+        };
         OutputPath = job.OutputPath;
         IsDone = job.Status == ClipJobStatus.Done;
+        CanUpload = IsDone && job.Upload is UploadState.None or UploadState.Failed;
+        YouTubeUrl = job.YouTubeUrl;
     }
 }

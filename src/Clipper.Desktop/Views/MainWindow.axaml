@@ -55,13 +55,20 @@
           <ListBox ItemsSource="{Binding Clips}">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:ClipRow">
-                <Grid ColumnDefinitions="80,190,60,*,Auto">
+                <Grid ColumnDefinitions="80,190,60,*,Auto,Auto,Auto">
                   <TextBlock Text="{Binding Time}" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="1" Text="{Binding Source}" VerticalAlignment="Center" />
                   <TextBlock Grid.Column="2" Text="{Binding Length}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="3" Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                  <Button Grid.Column="4" Content="Открыть" IsVisible="{Binding IsDone}"
+                  <TextBlock Grid.Column="3" Text="{Binding Status}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Status}" />
+                  <Button Grid.Column="4" Content="Открыть" IsVisible="{Binding IsDone}" Margin="4,0,0,0"
                           Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).OpenClipCommand}"
+                          CommandParameter="{Binding}" />
+                  <Button Grid.Column="5" Content="В Shorts" IsVisible="{Binding CanUpload}" Margin="4,0,0,0"
+                          Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).UploadClipCommand}"
+                          CommandParameter="{Binding}" />
+                  <Button Grid.Column="6" Content="▶ YouTube" IsVisible="{Binding YouTubeUrl, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="4,0,0,0"
+                          Command="{Binding $parent[ListBox].((vm:MainViewModel)DataContext).OpenYouTubeCommand}"
                           CommandParameter="{Binding}" />
                 </Grid>
               </DataTemplate>
@@ -157,6 +164,43 @@
               <TextBlock Grid.Row="5" Classes="label" Text="Папка моделей" />
               <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.Subtitles.ModelsDir}" />
             </Grid>
+
+            <TextBlock Text="YouTube Shorts" FontSize="18" Margin="0,8,0,0" />
+            <Grid Classes="form" ColumnDefinitions="220,200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Аккаунт Google" />
+              <StackPanel Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+                <Button Content="Войти через Google" Command="{Binding GoogleSignInCommand}" IsVisible="{Binding !IsGoogleSignedIn}" />
+                <Button Content="Выйти" Command="{Binding GoogleSignOutCommand}" IsVisible="{Binding IsGoogleSignedIn}" />
+                <TextBlock Text="{Binding GoogleStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Загружать автоматически" />
+              <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding Options.YouTube.AutoUpload}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="hint" Text="выключено — загрузка кнопкой «В Shorts» в списке клипов" />
+
+              <TextBlock Grid.Row="2" Classes="label" Text="Доступ к видео" />
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding PrivacyOptions}"
+                        SelectedItem="{Binding Options.YouTube.Privacy}" HorizontalAlignment="Stretch" />
+              <TextBlock Grid.Row="2" Grid.Column="2" Classes="hint" Text="private — только вы; unlisted — по ссылке; public — всем" />
+
+              <TextBlock Grid.Row="3" Classes="label" Text="Название" />
+              <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.YouTube.TitleTemplate}"
+                       Watermark="{}{text} — начало речи, {channel}, {date}" />
+
+              <TextBlock Grid.Row="4" Classes="label" Text="Описание" VerticalAlignment="Top" Margin="0,10,12,0" />
+              <TextBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.YouTube.DescriptionTemplate}"
+                       AcceptsReturn="True" TextWrapping="Wrap" MinHeight="70" />
+
+              <TextBlock Grid.Row="5" Classes="label" Text="Теги (через запятую)" />
+              <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.YouTube.Tags}" />
+
+              <TextBlock Grid.Row="6" Classes="label" Text="Ключ Google (client_secret)" />
+              <Grid Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto">
+                <TextBox Text="{Binding Options.YouTube.ClientSecretsPath}" />
+                <Button Grid.Column="1" Content="Выбрать…" Command="{Binding PickClientSecretsCommand}" Margin="8,0,0,0" />
+              </Grid>
+            </Grid>
+            <TextBlock Classes="hint" Margin="0" Text="Как получить ключ Google — в README, раздел «YouTube Shorts». Пока приложение Google не прошло проверку, YouTube публикует загруженные через API видео только как private." />
 
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Button Content="Сохранить настройки" Command="{Binding SaveSettingsCommand}" />

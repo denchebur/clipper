@@ -13,7 +13,11 @@ public partial class MainWindow : Window
         // Передаём модели способ открывать файлы и папки (Проводник / Finder).
         DataContextChanged += (_, _) =>
         {
-            if (DataContext is MainViewModel vm) vm.Launcher = Launcher;
+            if (DataContext is MainViewModel vm)
+            {
+                vm.Launcher = Launcher;
+                vm.StorageProvider = StorageProvider;
+            }
         };
     }
 

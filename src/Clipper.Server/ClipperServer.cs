@@ -6,6 +6,7 @@ using Clipper.Core.Planning;
 using Clipper.Cutter;
 using Clipper.Recorder;
 using Clipper.Subtitles;
+using Clipper.YouTube;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +46,9 @@ public static class ClipperServer
         builder.Services.AddSingleton<IStreamRecorder, StreamlinkRecorder>();
         builder.Services.AddSingleton<IClipCutter, FfmpegClipCutter>();
         builder.Services.AddSingleton<ITranscriber, WhisperTranscriber>();
+        builder.Services.AddSingleton<YouTubeAuth>();
+        builder.Services.AddSingleton<IClipPublisher, YouTubeShortsPublisher>();
+        builder.Services.AddSingleton<ClipUploader>();
         builder.Services.AddHostedService<RecorderService>();
         builder.Services.AddHostedService<ClipWorker>();
 
@@ -80,6 +84,15 @@ public static class ClipperServer
                 "Всплеск {Platform}/{Channel}: {Rate:0.0} сообщ/с (обычно {Base:0.0}) → клип {Start:HH:mm:ss}–{End:HH:mm:ss}",
                 spike.Platform, spike.Channel, spike.MessagesPerSecond, spike.BaselinePerSecond,
                 job.Start.ToLocalTime(), job.End.ToLocalTime());
+            return Results.Ok(job);
+        });
+
+        // Загрузить готовый клип в Shorts вручную.
+        app.MapPost("/api/clips/{id:guid}/upload", async (Guid id, ClipPlanner planner, ClipUploader uploader, CancellationToken ct) =>
+        {
+            var job = planner.Jobs.FirstOrDefault(j => j.Id == id);
+            if (job is null) return Results.NotFound();
+            await uploader.UploadAsync(job, ct);
             return Results.Ok(job);
         });
 

@@ -18,6 +18,7 @@ public sealed class ClipWorker(
     IStreamRecorder recorder,
     IClipCutter cutter,
     ITranscriber transcriber,
+    ClipUploader uploader,
     ILogger<ClipWorker> logger) : BackgroundService
 {
     /// <summary>Запас на то, что streamlink пишет на диск с небольшой задержкой.</summary>
@@ -62,7 +63,7 @@ public sealed class ClipWorker(
             if (options.Subtitles.Enabled)
             {
                 job.Status = ClipJobStatus.Transcribing;
-                srtPath = await CreateSubtitlesAsync(session.FilePath, offset, duration, output, ct);
+                srtPath = await CreateSubtitlesAsync(session.FilePath, offset, duration, output, job, ct);
                 job.SubtitlesPath = srtPath;
             }
 
@@ -73,6 +74,10 @@ public sealed class ClipWorker(
             job.OutputPath = output;
             job.Status = ClipJobStatus.Done;
             logger.LogInformation("Клип готов: {Path}", output);
+
+            // Загрузка идёт в фоне, чтобы не задерживать нарезку следующих клипов.
+            if (options.YouTube.AutoUpload)
+                _ = Task.Run(() => uploader.UploadAsync(job, ct), ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -92,13 +97,14 @@ public sealed class ClipWorker(
     /// (тогда клип всё равно режется, просто без субтитров).
     /// </summary>
     private async Task<string?> CreateSubtitlesAsync(string source, TimeSpan offset, TimeSpan duration,
-        string clipPath, CancellationToken ct)
+        string clipPath, ClipJob job, CancellationToken ct)
     {
         var wavPath = Path.ChangeExtension(clipPath, ".wav");
         try
         {
             await cutter.ExtractAudioAsync(source, offset, duration, wavPath, ct);
             var transcript = await transcriber.TranscribeAsync(wavPath, ct);
+            job.TranscriptText = string.Join(' ', transcript.Segments.Select(s => s.Text));
 
             var lines = SubtitleFormatter.SplitForShorts(transcript.Segments, options.Subtitles.MaxLineChars);
             if (lines.Count == 0)

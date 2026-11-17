@@ -43,6 +43,33 @@ public sealed class ClipperOptions
     public VerticalVideoOptions Vertical { get; set; } = new();
 
     public SubtitleOptions Subtitles { get; set; } = new();
+
+    public YouTubeOptions YouTube { get; set; } = new();
+}
+
+/// <summary>Загрузка клипов в YouTube Shorts через YouTube Data API.</summary>
+public sealed class YouTubeOptions
+{
+    /// <summary>true — загружать каждый готовый клип сразу; false — только кнопкой «В Shorts».</summary>
+    public bool AutoUpload { get; set; } = false;
+
+    /// <summary>OAuth-ключ «Desktop app» из Google Cloud Console (см. README).</summary>
+    public string ClientSecretsPath { get; set; } = "client_secret.json";
+
+    /// <summary>Где хранится токен входа в Google (чтобы не входить каждый раз).</summary>
+    public string TokenDir { get; set; } = "youtube-token";
+
+    /// <summary>private, unlisted или public.</summary>
+    public string Privacy { get; set; } = "private";
+
+    /// <summary>Шаблон названия. Подстановки: {text} — начало речи из субтитров, {channel}, {date}.</summary>
+    public string TitleTemplate { get; set; } = "{text} #Shorts";
+
+    /// <summary>Шаблон описания. Подстановки как в названии плюс {stream} — ссылка на стрим.</summary>
+    public string DescriptionTemplate { get; set; } = "Смотри стрим прямо сейчас: {stream}\n\n#Shorts #stream";
+
+    /// <summary>Теги через запятую.</summary>
+    public string Tags { get; set; } = "shorts,stream,twitch";
 }
 
 /// <summary>Субтитры: речь распознаётся локально моделью Whisper.</summary>

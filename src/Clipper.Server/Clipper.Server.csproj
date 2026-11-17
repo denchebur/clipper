@@ -15,6 +15,7 @@
     <ProjectReference Include="..\Clipper.Recorder\Clipper.Recorder.csproj" />
     <ProjectReference Include="..\Clipper.Cutter\Clipper.Cutter.csproj" />
     <ProjectReference Include="..\Clipper.Subtitles\Clipper.Subtitles.csproj" />
+    <ProjectReference Include="..\Clipper.YouTube\Clipper.YouTube.csproj" />
   </ItemGroup>
 
 </Project>
