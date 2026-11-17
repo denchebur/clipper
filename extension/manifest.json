@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Clipper — всплески чата",
+  "version": "0.1.0",
+  "description": "Следит за чатом Twitch/YouTube и сообщает ядру Clipper о всплесках активности.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Clipper",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.twitch.tv/*"],
+      "js": ["shared/defaults.js", "content/spike-detector.js", "content/chat-watcher.js", "content/twitch.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.youtube.com/live_chat*"],
+      "js": ["shared/defaults.js", "content/spike-detector.js", "content/chat-watcher.js", "content/youtube.js"],
+      "all_frames": true,
+      "run_at": "document_idle"
+    }
+  ]
+}
