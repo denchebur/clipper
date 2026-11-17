@@ -18,7 +18,7 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
 ```
 
 1. **Recorder** (`src/Clipper.Recorder`) records each stream with `streamlink` into `.ts` files, several streams at once (one recorder per stream, `RecorderPool`). MPEG-TS can be read while it is still being written, so clips are cut during the broadcast. Every `RotateRecordingMinutes` a new file is started (the old one keeps recording for a short overlap so no clip is split), and `RecordingCleaner` deletes recordings older than `KeepRecordingsMinutes`. Clips are never deleted.
-2. **Extension** (`extension/`) counts chat messages. When the last 10 seconds have 2.5× more messages than usual, it sends a "spike" with the exact time and channel name to the core, which matches it to the recorded stream with the same channel. Open a tab with the chat of every stream you record.
+2. **Extension** (`extension/`) measures chat activity: a normal message counts 1, a message with laughter/hype emotes (KEKW, LUL, ахах, 😂… editable list) counts 2, a sub 3, a donation (bits, Super Chat) 5, and a raid triggers a clip immediately. When the last 10 seconds have 2.5× more activity than usual, it sends a "spike" with the exact time and channel name to the core, which matches it to the recorded stream with the same channel. Open a tab with the chat of every stream you record.
 3. **Core** (`src/Clipper.App` + `src/Clipper.Core`) turns a spike into a time window (by default 25 s before and 10 s after, because chat reacts with a delay). Back-to-back spikes are merged into one clip of up to 60 seconds.
 4. **Subtitles** (`src/Clipper.Subtitles`): before cutting, the clip's audio is transcribed locally with [Whisper](https://github.com/ggerganov/whisper.cpp) (via Whisper.net). The language is detected automatically. Lines are split short for Shorts and saved next to the clip as `clip_….ru.srt`, then burned into the video. The model is downloaded once on the first clip (`base` ≈ 150 MB).
 5. **Cutter** (`src/Clipper.Cutter`) waits until the end of the window is recorded, then uses `ffmpeg` to make a vertical video: the original picture centered over a blurred background (`blur`), or a center crop (`crop`).
@@ -148,4 +148,3 @@ The cutter test generates a test video and cuts it with real ffmpeg. If ffmpeg i
 
 - Auto-publishing clips to TikTok.
 - Captions and a "Watch the stream live: link" overlay.
-- A smarter detector: emotes, "KEKW", donations.

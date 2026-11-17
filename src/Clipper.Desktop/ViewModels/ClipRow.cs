@@ -23,13 +23,24 @@ public partial class ClipRow : ObservableObject
     [ObservableProperty] private bool _canUpload;
     [ObservableProperty] private string? _youTubeUrl;
 
+    /// <summary>Почему появился клип: рейд, донаты, смех в чате или просто активный чат.</summary>
+    private static string Describe(ClipJob job)
+    {
+        var reasons = job.Spikes.Select(s => s.Reason).ToHashSet();
+        var why = reasons.Contains("raid") ? "рейд"
+            : reasons.Contains("events") ? "донаты/подписки"
+            : reasons.Contains("emotes") ? "смех/эмоуты"
+            : "чат";
+        return job.Spikes.Count > 1 ? $"{why}, {job.Spikes.Count} всплеск." : why;
+    }
+
     public void Update(ClipJob job)
     {
         var spike = job.Spikes.FirstOrDefault();
         Time = job.Start.ToLocalTime().ToString("HH:mm:ss");
         Source = spike is null ? job.Stream.Key
             : spike.Platform == "manual" ? $"{job.Stream.Key} · вручную"
-            : $"{job.Stream.Key} · {job.Spikes.Count} всплеск.";
+            : $"{job.Stream.Key} · {Describe(job)}";
         Length = $"{job.Duration.TotalSeconds:0} с";
         Status = job.Status switch
         {

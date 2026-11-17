@@ -9,12 +9,14 @@ namespace Clipper.Core.Models;
 /// <param name="Channel">Канал Twitch или id видео YouTube.</param>
 /// <param name="MessagesPerSecond">Скорость сообщений в момент всплеска.</param>
 /// <param name="BaselinePerSecond">Обычная (фоновая) скорость сообщений.</param>
+/// <param name="Reason">Почему сработало: "chat", "emotes" (смех/эмоуты), "events" (донаты/подписки), "raid".</param>
 public sealed record ChatSpike(
     DateTimeOffset Timestamp,
     string Platform,
     string Channel,
     double MessagesPerSecond = 0,
-    double BaselinePerSecond = 0)
+    double BaselinePerSecond = 0,
+    string? Reason = null)
 {
     /// <summary>Во сколько раз активность выше обычной.</summary>
     public double Ratio => BaselinePerSecond > 0 ? MessagesPerSecond / BaselinePerSecond : 0;

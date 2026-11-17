@@ -3,7 +3,10 @@ const $ = (id) => document.getElementById(id);
 
 async function init() {
   const settings = await chrome.storage.sync.get(CLIPPER_DEFAULTS);
-  for (const key of fields) $(key).value = settings[key];
+  for (const key of fields) {
+    if (typeof CLIPPER_DEFAULTS[key] === "boolean") $(key).checked = settings[key];
+    else $(key).value = settings[key];
+  }
 
   // Проверяем, запущено ли ядро.
   try {
@@ -21,7 +24,8 @@ async function init() {
   for (const e of log) {
     const li = document.createElement("li");
     const time = new Date(e.timestamp).toLocaleTimeString();
-    li.textContent = `${time} ${e.platform}/${e.channel}: ${e.messagesPerSecond.toFixed(1)} сообщ/с — ${e.result}`;
+    const why = { raid: "рейд", events: "донаты/подписки", emotes: "смех/эмоуты", chat: "активный чат" }[e.reason] || "";
+    li.textContent = `${time} ${e.platform}/${e.channel}: ${why || e.messagesPerSecond.toFixed(1) + " /с"} — ${e.result}`;
     $("log").appendChild(li);
   }
   if (!log.length) $("log").innerHTML = "<li>пока нет</li>";
@@ -30,7 +34,10 @@ async function init() {
 $("save").addEventListener("click", async () => {
   const values = {};
   for (const key of fields) {
-    values[key] = key === "coreUrl" ? $(key).value.replace(/\/$/, "") : Number($(key).value);
+    const type = typeof CLIPPER_DEFAULTS[key];
+    if (type === "boolean") values[key] = $(key).checked;
+    else if (type === "string") values[key] = key === "coreUrl" ? $(key).value.trim().replace(/\/$/, "") : $(key).value;
+    else values[key] = Number($(key).value);
   }
   await chrome.storage.sync.set(values);
   $("save").textContent = "Сохранено ✓";

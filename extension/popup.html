@@ -26,6 +26,10 @@
   <label>Во сколько раз выше <input id="ratio" type="number" step="0.1" min="1"></label>
   <label>Мин. сообщений в окне <input id="minMessages" type="number" min="1"></label>
   <label>Пауза после всплеска, с <input id="cooldownSeconds" type="number" min="0"></label>
+  <label>Вес сообщения со смехом/эмоутом <input id="hypeWeight" type="number" step="0.5" min="1"></label>
+  <label style="display:block">Слова и эмоуты реакции (через запятую)
+    <textarea id="hypeWords" rows="3" style="width:100%;box-sizing:border-box;margin-top:2px"></textarea></label>
+  <label>Учитывать донаты, подписки, рейды <input id="useEvents" type="checkbox" style="width:auto"></label>
   <button id="save">Сохранить (перезагрузите вкладку с чатом)</button>
 
   <h1 style="margin-top:12px">Последние всплески</h1>
