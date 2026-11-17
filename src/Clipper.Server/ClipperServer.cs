@@ -92,8 +92,8 @@ public static class ClipperServer
 
             var job = planner.AddSpike(spike, stream);
             log.LogInformation(
-                "Всплеск {Stream}: {Rate:0.0} сообщ/с (обычно {Base:0.0}) → клип {Start:HH:mm:ss}–{End:HH:mm:ss}",
-                stream.Key, spike.MessagesPerSecond, spike.BaselinePerSecond,
+                "Всплеск {Stream} ({Reason}): {Rate:0.0}/с (обычно {Base:0.0}) → клип {Start:HH:mm:ss}–{End:HH:mm:ss}",
+                stream.Key, spike.Reason ?? "chat", spike.MessagesPerSecond, spike.BaselinePerSecond,
                 job.Start.ToLocalTime(), job.End.ToLocalTime());
             return Results.Ok(job);
         });
