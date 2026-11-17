@@ -15,7 +15,8 @@ public static class ExternalProcess
         string fileName,
         IEnumerable<string> arguments,
         CancellationToken cancellationToken,
-        Action<string>? onStdErrLine = null)
+        Action<string>? onStdErrLine = null,
+        string? workingDirectory = null)
     {
         var psi = new ProcessStartInfo(ResolveExecutable(fileName))
         {
@@ -24,6 +25,8 @@ public static class ExternalProcess
             UseShellExecute = false,
             CreateNoWindow = true,
         };
+        if (workingDirectory is not null)
+            psi.WorkingDirectory = workingDirectory;
         foreach (var arg in arguments)
             psi.ArgumentList.Add(arg);
 

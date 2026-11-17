@@ -37,6 +37,7 @@ public partial class MainViewModel : ObservableObject
 
     public string[] Qualities { get; } = { "best", "1080p60", "1080p", "720p60", "720p", "480p" };
     public string[] VerticalModes { get; } = { "blur", "crop" };
+    public string[] WhisperModels { get; } = { "tiny", "base", "small", "medium", "largev3turbo" };
 
     public ObservableCollection<ClipRow> Clips { get; } = new();
     public ObservableCollection<string> Log { get; } = new();

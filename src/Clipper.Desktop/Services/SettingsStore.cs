@@ -16,16 +16,22 @@ public static class SettingsStore
 
     public static ClipperOptions Load()
     {
+        ClipperOptions? options = null;
         try
         {
             if (File.Exists(FilePath))
-                return JsonSerializer.Deserialize<ClipperOptions>(File.ReadAllText(FilePath), Json) ?? CreateDefault();
+                options = JsonSerializer.Deserialize<ClipperOptions>(File.ReadAllText(FilePath), Json);
         }
         catch (Exception)
         {
             // Повреждённый файл — начинаем с настроек по умолчанию.
         }
-        return CreateDefault();
+        options ??= CreateDefault();
+
+        // Модели Whisper храним рядом с настройками, если путь не задан явно.
+        if (!Path.IsPathRooted(options.Subtitles.ModelsDir))
+            options.Subtitles.ModelsDir = Path.Combine(Path.GetDirectoryName(FilePath)!, "models");
+        return options;
     }
 
     public static void Save(ClipperOptions options)

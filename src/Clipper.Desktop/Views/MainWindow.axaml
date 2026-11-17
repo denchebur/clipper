@@ -128,6 +128,36 @@
               <TextBlock Grid.Row="11" Grid.Column="2" Classes="hint" Text="тот же адрес укажите в настройках расширения" />
             </Grid>
 
+            <TextBlock Text="Субтитры" FontSize="18" Margin="0,8,0,0" />
+            <Grid Classes="form" ColumnDefinitions="220,200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Row="0" Classes="label" Text="Делать субтитры" />
+              <CheckBox Grid.Row="0" Grid.Column="1" IsChecked="{Binding Options.Subtitles.Enabled}" />
+              <TextBlock Grid.Row="0" Grid.Column="2" Classes="hint" Text="речь распознаётся на компьютере, бесплатно" />
+
+              <TextBlock Grid.Row="1" Classes="label" Text="Вшивать в видео" />
+              <CheckBox Grid.Row="1" Grid.Column="1" IsChecked="{Binding Options.Subtitles.BurnIn}" />
+              <TextBlock Grid.Row="1" Grid.Column="2" Classes="hint" Text="файл .srt рядом с клипом сохраняется всегда" />
+
+              <TextBlock Grid.Row="2" Classes="label" Text="Модель Whisper" />
+              <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding WhisperModels}"
+                        SelectedItem="{Binding Options.Subtitles.Model}" HorizontalAlignment="Stretch" />
+              <TextBlock Grid.Row="2" Grid.Column="2" Classes="hint" Text="base — быстро; small — точнее для русского, но медленнее. Скачается при первом клипе" />
+
+              <TextBlock Grid.Row="3" Classes="label" Text="Язык речи" />
+              <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Options.Subtitles.Language}" />
+              <TextBlock Grid.Row="3" Grid.Column="2" Classes="hint" Text="auto — определить сам, или код: ru, en, uk…" />
+
+              <TextBlock Grid.Row="4" Classes="label" Text="Символов в строке / шрифт" />
+              <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <TextBox Text="{Binding Options.Subtitles.MaxLineChars}" Width="90" />
+                <TextBlock Text="/" VerticalAlignment="Center" />
+                <TextBox Text="{Binding Options.Subtitles.FontSize}" Width="90" />
+              </StackPanel>
+
+              <TextBlock Grid.Row="5" Classes="label" Text="Папка моделей" />
+              <TextBox Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding Options.Subtitles.ModelsDir}" />
+            </Grid>
+
             <StackPanel Orientation="Horizontal" Spacing="12">
               <Button Content="Сохранить настройки" Command="{Binding SaveSettingsCommand}" />
               <TextBlock Classes="hint" Text="{Binding SettingsPath, StringFormat='Файл: {0}'}" />

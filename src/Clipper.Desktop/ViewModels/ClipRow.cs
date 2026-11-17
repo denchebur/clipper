@@ -30,8 +30,9 @@ public partial class ClipRow : ObservableObject
         Status = job.Status switch
         {
             ClipJobStatus.Waiting => "ждёт записи",
+            ClipJobStatus.Transcribing => "распознаю речь…",
             ClipJobStatus.Cutting => "режется…",
-            ClipJobStatus.Done => "готов",
+            ClipJobStatus.Done => job.SubtitlesPath is null ? "готов" : "готов, с субтитрами",
             ClipJobStatus.Failed => "ошибка: " + job.Error,
             _ => job.Status.ToString(),
         };

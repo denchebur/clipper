@@ -5,6 +5,7 @@ using Clipper.Core.Models;
 using Clipper.Core.Planning;
 using Clipper.Cutter;
 using Clipper.Recorder;
+using Clipper.Subtitles;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -43,6 +44,7 @@ public static class ClipperServer
         builder.Services.AddSingleton<ClipPlanner>();
         builder.Services.AddSingleton<IStreamRecorder, StreamlinkRecorder>();
         builder.Services.AddSingleton<IClipCutter, FfmpegClipCutter>();
+        builder.Services.AddSingleton<ITranscriber, WhisperTranscriber>();
         builder.Services.AddHostedService<RecorderService>();
         builder.Services.AddHostedService<ClipWorker>();
 

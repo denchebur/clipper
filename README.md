@@ -20,7 +20,8 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
 1. **Recorder** (`src/Clipper.Recorder`) records the stream with `streamlink` into a `.ts` file. MPEG-TS can be read while it is still being written, so clips are cut during the broadcast. If the stream drops, recording restarts into a new file.
 2. **Extension** (`extension/`) counts chat messages. When the last 10 seconds have 2.5× more messages than usual, it sends a "spike" with the exact time to the core.
 3. **Core** (`src/Clipper.App` + `src/Clipper.Core`) turns a spike into a time window (by default 25 s before and 10 s after, because chat reacts with a delay). Back-to-back spikes are merged into one clip of up to 60 seconds.
-4. **Cutter** (`src/Clipper.Cutter`) waits until the end of the window is recorded, then uses `ffmpeg` to make a vertical video: the original picture centered over a blurred background (`blur`), or a center crop (`crop`).
+4. **Subtitles** (`src/Clipper.Subtitles`): before cutting, the clip's audio is transcribed locally with [Whisper](https://github.com/ggerganov/whisper.cpp) (via Whisper.net). The language is detected automatically. Lines are split short for Shorts and saved next to the clip as `clip_….ru.srt`, then burned into the video. The model is downloaded once on the first clip (`base` ≈ 150 MB).
+5. **Cutter** (`src/Clipper.Cutter`) waits until the end of the window is recorded, then uses `ffmpeg` to make a vertical video: the original picture centered over a blurred background (`blur`), or a center crop (`crop`).
 
 ## Layout
 
@@ -28,7 +29,8 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
 |---|---|
 | `src/Clipper.Core` | Models (`ChatSpike`, `ClipJob`, `RecordingSession`), `ClipperOptions`, module interfaces, `ClipPlanner` |
 | `src/Clipper.Recorder` | `StreamlinkRecorder`: records the stream |
-| `src/Clipper.Cutter` | `FfmpegClipCutter`: cutting and vertical format |
+| `src/Clipper.Cutter` | `FfmpegClipCutter`: cutting, vertical format, burning in subtitles |
+| `src/Clipper.Subtitles` | `WhisperTranscriber`: local speech recognition |
 | `src/Clipper.Server` | Wires the core together: HTTP API, background recorder and clip worker (`ClipperServer.Build`) |
 | `src/Clipper.App` | Console entry point, reads `appsettings.json` |
 | `src/Clipper.Desktop` | Desktop client (Avalonia, Windows / macOS / Linux): stream link, settings, start/stop, clip list, log |
@@ -102,6 +104,9 @@ Invoke-RestMethod -Method Post http://127.0.0.1:5055/api/clip-now
 | `LatencyCorrectionSeconds` | 0 | Shift spike time back if clips start too late |
 | `Quality` | best | streamlink quality (`720p`, `1080p60`, …) |
 | `Vertical.Mode` | blur | `blur` (blurred background) or `crop` (center crop) |
+| `Subtitles.Enabled` / `BurnIn` | true / true | Make subtitles / burn them into the video (`.srt` is always saved) |
+| `Subtitles.Model` | base | Whisper model: `tiny`, `base`, `small`, `medium`, `largev3turbo`. `small` is noticeably better for Russian but slower |
+| `Subtitles.Language` | auto | `auto` or a language code (`ru`, `en`, …) |
 
 **Extension:** the popup lets you tune the counting window, the "times above normal" threshold, the minimum message count and the cooldown between spikes. Reload the chat tab after saving.
 
