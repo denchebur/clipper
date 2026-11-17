@@ -43,13 +43,15 @@ public static class ClipperServer
 
         builder.Services.AddSingleton(options);
         builder.Services.AddSingleton<ClipPlanner>();
-        builder.Services.AddSingleton<IStreamRecorder, StreamlinkRecorder>();
+        builder.Services.AddSingleton<RecorderPool>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<RecorderPool>());
+        builder.Services.AddSingleton<RecordingCleaner>();
+        builder.Services.AddHostedService(sp => sp.GetRequiredService<RecordingCleaner>());
         builder.Services.AddSingleton<IClipCutter, FfmpegClipCutter>();
         builder.Services.AddSingleton<ITranscriber, WhisperTranscriber>();
         builder.Services.AddSingleton<YouTubeAuth>();
         builder.Services.AddSingleton<IClipPublisher, YouTubeShortsPublisher>();
         builder.Services.AddSingleton<ClipUploader>();
-        builder.Services.AddHostedService<RecorderService>();
         builder.Services.AddHostedService<ClipWorker>();
 
         builder.Services.ConfigureHttpJsonOptions(o =>
@@ -68,21 +70,30 @@ public static class ClipperServer
     {
         app.MapGet("/", () => Results.Redirect("/api/status"));
 
-        // Состояние: что пишется и какие клипы в работе.
-        app.MapGet("/api/status", (ClipperOptions o, IStreamRecorder recorder, ClipPlanner planner) => new
+        // Состояние: какие стримы пишутся и какие клипы в работе.
+        app.MapGet("/api/status", (RecorderPool pool, ClipPlanner planner) => new
         {
-            o.StreamUrl,
-            Recordings = recorder.Sessions,
+            Streams = pool.Recorders.Select(r => new { r.Stream.Key, r.Stream.Url, Recordings = r.Sessions }),
+            // Для старых версий расширения: «идёт ли запись хоть одного стрима».
+            Recordings = pool.Recorders.SelectMany(r => r.Sessions),
             Clips = planner.Jobs,
         });
 
         // Всплеск активности чата (шлёт расширение).
-        app.MapPost("/api/spikes", (ChatSpike spike, ClipPlanner planner, ILoggerFactory loggers) =>
+        app.MapPost("/api/spikes", (ChatSpike spike, RecorderPool pool, ClipPlanner planner, ILoggerFactory loggers) =>
         {
-            var job = planner.AddSpike(spike);
-            loggers.CreateLogger("Clipper.Api").LogInformation(
-                "Всплеск {Platform}/{Channel}: {Rate:0.0} сообщ/с (обычно {Base:0.0}) → клип {Start:HH:mm:ss}–{End:HH:mm:ss}",
-                spike.Platform, spike.Channel, spike.MessagesPerSecond, spike.BaselinePerSecond,
+            var log = loggers.CreateLogger("Clipper.Api");
+            var stream = StreamSource.Match(spike, pool.Streams);
+            if (stream is null)
+            {
+                log.LogInformation("Всплеск {Platform}/{Channel} пропущен: этот канал не записывается", spike.Platform, spike.Channel);
+                return Results.NotFound(new { error = $"Канал {spike.Channel} не записывается" });
+            }
+
+            var job = planner.AddSpike(spike, stream);
+            log.LogInformation(
+                "Всплеск {Stream}: {Rate:0.0} сообщ/с (обычно {Base:0.0}) → клип {Start:HH:mm:ss}–{End:HH:mm:ss}",
+                stream.Key, spike.MessagesPerSecond, spike.BaselinePerSecond,
                 job.Start.ToLocalTime(), job.End.ToLocalTime());
             return Results.Ok(job);
         });
@@ -96,8 +107,14 @@ public static class ClipperServer
             return Results.Ok(job);
         });
 
-        // Ручной клип «вот прямо сейчас было классно».
-        app.MapPost("/api/clip-now", (ClipPlanner planner) =>
-            Results.Ok(planner.AddSpike(ChatSpike.Manual())));
+        // Ручной клип «вот прямо сейчас было классно»: ?stream=имя — один стрим, без параметра — все.
+        app.MapPost("/api/clip-now", (string? stream, RecorderPool pool, ClipPlanner planner) =>
+        {
+            var targets = pool.Streams
+                .Where(s => stream is null || s.Key.Equals(stream, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (targets.Count == 0) return Results.NotFound();
+            return Results.Ok(targets.Select(s => planner.AddSpike(ChatSpike.Manual(), s)).ToList());
+        });
     }
 }

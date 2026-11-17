@@ -27,6 +27,9 @@ public sealed class ClipJob
 {
     public Guid Id { get; } = Guid.NewGuid();
 
+    /// <summary>Стрим, из записи которого режется клип.</summary>
+    public required StreamSource Stream { get; init; }
+
     /// <summary>Всплески, из-за которых появился клип (близкие всплески склеиваются в один клип).</summary>
     public List<ChatSpike> Spikes { get; } = new();
 

@@ -2,7 +2,6 @@ using System.Collections.ObjectModel;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Clipper.Core;
-using Clipper.Core.Abstractions;
 using Clipper.Core.Models;
 using Clipper.Core.Planning;
 using Clipper.Desktop.Services;
@@ -30,6 +29,8 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
         Options = SettingsStore.Load();
+        foreach (var url in Options.Streams.DefaultIfEmpty(Options.StreamUrl))
+            Streams.Add(new StreamRow { Url = url });
         _refreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Refresh());
         _ = UpdateGoogleStatusAsync();
     }
@@ -41,6 +42,9 @@ public partial class MainViewModel : ObservableObject
     public string[] VerticalModes { get; } = { "blur", "crop" };
     public string[] WhisperModels { get; } = { "tiny", "base", "small", "medium", "largev3turbo" };
     public string[] PrivacyOptions { get; } = { "private", "unlisted", "public" };
+
+    /// <summary>Стримы, которые пишем одновременно.</summary>
+    public ObservableCollection<StreamRow> Streams { get; } = new();
 
     public ObservableCollection<ClipRow> Clips { get; } = new();
     public ObservableCollection<string> Log { get; } = new();
@@ -55,7 +59,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ClipNowCommand))]
     private bool _isRunning;
 
-    [ObservableProperty] private string _statusText = "Остановлено. Вставьте ссылку на стрим и нажмите «Старт».";
+    [ObservableProperty] private string _statusText = "Остановлено. Вставьте ссылки на стримы и нажмите «Старт».";
 
     public string StartStopText => IsRunning ? "■ Стоп" : "▶ Старт";
 
@@ -68,13 +72,12 @@ public partial class MainViewModel : ObservableObject
 
     private async Task StartAsync()
     {
-        if (string.IsNullOrWhiteSpace(Options.StreamUrl))
+        SyncStreamsToOptions();
+        if (Options.GetStreams().Count == 0)
         {
-            StatusText = "Сначала вставьте ссылку на стрим.";
+            StatusText = "Сначала вставьте хотя бы одну ссылку на стрим.";
             return;
         }
-
-        Options.StreamUrl = Options.StreamUrl.Trim();
         SaveSettings();
 
         try
@@ -108,18 +111,57 @@ public partial class MainViewModel : ObservableObject
         await DisposeServerAsync();
         IsRunning = false;
         StatusText = "Остановлено.";
+        foreach (var row in Streams)
+        {
+            row.Status = "";
+            row.IsRecording = false;
+        }
     }
 
+    /// <summary>Клип сейчас — со всех записываемых стримов.</summary>
     [RelayCommand(CanExecute = nameof(IsRunning))]
     private void ClipNow()
     {
-        _server?.Services.GetRequiredService<ClipPlanner>().AddSpike(ChatSpike.Manual());
+        if (_server is null) return;
+        var planner = _server.Services.GetRequiredService<ClipPlanner>();
+        foreach (var stream in _server.Services.GetRequiredService<RecorderPool>().Streams)
+            planner.AddSpike(ChatSpike.Manual(), stream);
         Refresh();
+    }
+
+    /// <summary>Клип сейчас — с одного стрима (кнопка ✂ в строке стрима).</summary>
+    [RelayCommand]
+    private void ClipStream(StreamRow? row)
+    {
+        if (_server is null || row is null) return;
+        var key = StreamSource.FromUrl(row.Url).Key;
+        var stream = _server.Services.GetRequiredService<RecorderPool>().Streams.FirstOrDefault(s => s.Key == key);
+        if (stream is null) return;
+        _server.Services.GetRequiredService<ClipPlanner>().AddSpike(ChatSpike.Manual(), stream);
+        Refresh();
+    }
+
+    [RelayCommand]
+    private void AddStream() => Streams.Add(new StreamRow());
+
+    [RelayCommand]
+    private void RemoveStream(StreamRow? row)
+    {
+        if (row is null) return;
+        Streams.Remove(row);
+        if (Streams.Count == 0) Streams.Add(new StreamRow());
+    }
+
+    private void SyncStreamsToOptions()
+    {
+        Options.Streams = Streams.Select(r => r.Url.Trim()).Where(u => u.Length > 0).ToList();
+        Options.StreamUrl = ""; // старая настройка больше не нужна
     }
 
     [RelayCommand]
     private void SaveSettings()
     {
+        SyncStreamsToOptions();
         SettingsStore.Save(Options);
         if (IsRunning) StatusText = "Настройки сохранены. Перезапустите (Стоп → Старт), чтобы они применились.";
     }
@@ -221,6 +263,7 @@ public partial class MainViewModel : ObservableObject
     /// <summary>Вызывается окном при закрытии.</summary>
     public async Task ShutdownAsync()
     {
+        SyncStreamsToOptions();
         SettingsStore.Save(Options);
         if (IsRunning) await StopAsync();
     }
@@ -230,11 +273,22 @@ public partial class MainViewModel : ObservableObject
     {
         if (_server is null) return;
 
-        var recorder = _server.Services.GetRequiredService<IStreamRecorder>();
-        var active = recorder.Sessions.LastOrDefault(s => s.IsActive);
-        StatusText = active is null
-            ? "Запущено, но запись не идёт: стрим офлайн или streamlink не нашёл поток (см. «Лог»)."
-            : $"● Идёт запись с {active.StartedAt.ToLocalTime():HH:mm:ss}: {Path.GetFileName(active.FilePath)}";
+        var recorders = _server.Services.GetRequiredService<RecorderPool>().Recorders;
+        var recording = 0;
+        foreach (var row in Streams)
+        {
+            var key = StreamSource.FromUrl(row.Url).Key;
+            var recorder = recorders.FirstOrDefault(r => r.Stream.Key == key);
+            var active = recorder?.Sessions.FirstOrDefault(s => s.IsActive);
+            row.IsRecording = active is not null;
+            row.Status = recorder is null ? ""
+                : active is null ? "ждёт стрим (офлайн?)"
+                : $"● пишется с {recorder.Sessions.Where(s => s.IsActive).Min(s => s.StartedAt).ToLocalTime():HH:mm}";
+            if (active is not null) recording++;
+        }
+        StatusText = recording == recorders.Count
+            ? $"● Идёт запись: {recording} из {recorders.Count}"
+            : $"Идёт запись: {recording} из {recorders.Count}. Остальные стримы офлайн или streamlink не нашёл поток (см. «Лог»).";
 
         var jobs = _server.Services.GetRequiredService<ClipPlanner>().Jobs; // новые сверху
         foreach (var job in jobs.Reverse())

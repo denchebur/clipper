@@ -17,8 +17,8 @@ Makes short vertical clips (TikTok / YouTube Shorts) from a stream that is live 
                                     └──────────────────────────────┘
 ```
 
-1. **Recorder** (`src/Clipper.Recorder`) records the stream with `streamlink` into a `.ts` file. MPEG-TS can be read while it is still being written, so clips are cut during the broadcast. If the stream drops, recording restarts into a new file.
-2. **Extension** (`extension/`) counts chat messages. When the last 10 seconds have 2.5× more messages than usual, it sends a "spike" with the exact time to the core.
+1. **Recorder** (`src/Clipper.Recorder`) records each stream with `streamlink` into `.ts` files, several streams at once (one recorder per stream, `RecorderPool`). MPEG-TS can be read while it is still being written, so clips are cut during the broadcast. Every `RotateRecordingMinutes` a new file is started (the old one keeps recording for a short overlap so no clip is split), and `RecordingCleaner` deletes recordings older than `KeepRecordingsMinutes`. Clips are never deleted.
+2. **Extension** (`extension/`) counts chat messages. When the last 10 seconds have 2.5× more messages than usual, it sends a "spike" with the exact time and channel name to the core, which matches it to the recorded stream with the same channel. Open a tab with the chat of every stream you record.
 3. **Core** (`src/Clipper.App` + `src/Clipper.Core`) turns a spike into a time window (by default 25 s before and 10 s after, because chat reacts with a delay). Back-to-back spikes are merged into one clip of up to 60 seconds.
 4. **Subtitles** (`src/Clipper.Subtitles`): before cutting, the clip's audio is transcribed locally with [Whisper](https://github.com/ggerganov/whisper.cpp) (via Whisper.net). The language is detected automatically. Lines are split short for Shorts and saved next to the clip as `clip_….ru.srt`, then burned into the video. The model is downloaded once on the first clip (`base` ≈ 150 MB).
 5. **Cutter** (`src/Clipper.Cutter`) waits until the end of the window is recorded, then uses `ffmpeg` to make a vertical video: the original picture centered over a blurred background (`blur`), or a center crop (`crop`).
@@ -52,7 +52,7 @@ Check: `ffmpeg -version` and `streamlink --version` should work in a terminal.
   For a XAML previewer install the "Avalonia for Visual Studio" extension (optional).
 - **Terminal (Windows or macOS):** `dotnet run --project src/Clipper.Desktop`
 
-Paste the stream link, press **▶ Старт**, and the core starts inside the client on `http://127.0.0.1:5055`, so the browser extension works the same way. The **Настройки** tab holds all options; they are saved to `settings.json` (Windows: `%APPDATA%\Clipper`, macOS: `~/Library/Application Support/Clipper`). By default recordings and clips go to `Videos/Clipper` (`~/Movies/Clipper` on macOS).
+Paste one or more stream links (**+ Добавить стрим**), press **▶ Старт**, and the core starts inside the client on `http://127.0.0.1:5055`, so the browser extension works the same way. The **Настройки** tab holds all options; they are saved to `settings.json` (Windows: `%APPDATA%\Clipper`, macOS: `~/Library/Application Support/Clipper`). By default recordings and clips go to `Videos/Clipper` (`~/Movies/Clipper` on macOS).
 
 On macOS, install the tools with Homebrew: `brew install ffmpeg streamlink`. The client also looks in `/opt/homebrew/bin` and `/usr/local/bin`, because apps started from Finder don't see the terminal's `PATH`.
 
@@ -65,9 +65,9 @@ The result is in `src/Clipper.Desktop/bin/Release/net8.0/<runtime>/publish/`.
 
 ## Running the console core (without the client)
 
-1. Set the stream in `src/Clipper.App/appsettings.json`:
+1. List the streams in `src/Clipper.App/appsettings.json`:
    ```json
-   "StreamUrl": "https://www.twitch.tv/channel_name"
+   "Streams": [ "https://www.twitch.tv/channel_one", "https://www.twitch.tv/channel_two" ]
    ```
    For YouTube use the broadcast link `https://www.youtube.com/watch?v=...`.
 2. Start the core:
@@ -77,7 +77,7 @@ The result is in `src/Clipper.Desktop/bin/Release/net8.0/<runtime>/publish/`.
    The core listens on `http://127.0.0.1:5055`. Status: `http://127.0.0.1:5055/api/status`.
 3. Install the extension: open `chrome://extensions`, enable "Developer mode", click "Load unpacked" and pick the `extension` folder.
 4. Open the same stream in the browser with the chat visible. The page console (F12) will show `[Clipper] слежу за чатом ...`.
-5. Finished clips appear in `src/Clipper.App/clips/` (relative to the app's working directory).
+5. Finished clips appear in `clips/<channel>/<date>/clip_HH-mm-ss.mp4` (relative to the app's working directory in console mode).
 
 The "✂ Клип сейчас" (clip now) button in the extension popup queues a clip manually, without a spike.
 
@@ -109,7 +109,7 @@ The sign-in token is stored next to `settings.json`, so you only sign in once.
 |---|---|
 | `GET /api/status` | Current recordings and clip list with statuses |
 | `POST /api/spikes` | A spike: `{"timestamp":"2026-11-17T16:43:09Z","platform":"twitch","channel":"name","messagesPerSecond":6,"baselinePerSecond":1}` |
-| `POST /api/clip-now` | Clip at the current moment |
+| `POST /api/clip-now` | Clip at the current moment from all streams (`?stream=channel` for one) |
 | `POST /api/clips/{id}/upload` | Upload a finished clip to YouTube Shorts |
 
 Test without the extension (PowerShell):
@@ -125,6 +125,9 @@ Invoke-RestMethod -Method Post http://127.0.0.1:5055/api/clip-now
 |---|---|---|
 | `SecondsBefore` / `SecondsAfter` | 25 / 10 | Seconds to take before and after a spike |
 | `MaxClipSeconds` | 60 | Max length of a merged clip |
+| `Streams` | — | Stream links recorded at the same time |
+| `RotateRecordingMinutes` | 30 | Start a new recording file this often |
+| `KeepRecordingsMinutes` | 120 | Delete recordings older than this (0 = keep forever). Clips are kept |
 | `LatencyCorrectionSeconds` | 0 | Shift spike time back if clips start too late |
 | `Quality` | best | streamlink quality (`720p`, `1080p60`, …) |
 | `Vertical.Mode` | blur | `blur` (blurred background) or `crop` (center crop) |
@@ -145,5 +148,4 @@ The cutter test generates a test video and cuts it with real ffmpeg. If ffmpeg i
 
 - Auto-publishing clips to TikTok.
 - Captions and a "Watch the stream live: link" overlay.
-- Deleting old recordings so the disk doesn't fill up.
 - A smarter detector: emotes, "KEKW", donations.

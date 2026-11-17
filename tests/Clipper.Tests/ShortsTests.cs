@@ -11,7 +11,7 @@ public class ShortsTests
 {
     private static ClipJob DoneJob(string? transcript)
     {
-        var job = new ClipJob { Start = DateTimeOffset.Now, End = DateTimeOffset.Now.AddSeconds(30), Status = ClipJobStatus.Done };
+        var job = new ClipJob { Stream = StreamSource.FromUrl("https://www.twitch.tv/fubgun"), Start = DateTimeOffset.Now, End = DateTimeOffset.Now.AddSeconds(30), Status = ClipJobStatus.Done };
         job.Spikes.Add(new ChatSpike(DateTimeOffset.Now, "twitch", "fubgun", 5, 1));
         job.TranscriptText = transcript;
         return job;
@@ -34,7 +34,7 @@ public class ShortsTests
     [Fact]
     public void Description_ContainsStreamLink_AndTitleIsLimited()
     {
-        var options = new ClipperOptions { StreamUrl = "https://www.twitch.tv/fubgun" };
+        var options = new ClipperOptions();
         options.YouTube.TitleTemplate = new string('а', 150) + " <{channel}>";
 
         var meta = ShortsMetadata.Build(DoneJob(null), options);
